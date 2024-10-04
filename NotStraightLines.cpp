@@ -1,34 +1,39 @@
-#include "rack.hpp"
+#include <rack.hpp>
 
 using namespace rack;
 
-Plugin *plugin;
+Plugin* pluginInstance;
 
 static const int NUM_LINES = 60;
 static const int NUM_POINTS = 128;
 
 struct NotStraightLines : Module {
-	enum ParamIds {
+	enum Params {
 		NUM_PARAMS
 	};
-	enum InputIds {
+	enum Inputs {
 		X_INPUT,
 		Y_INPUT,
 		TRIG_INPUT,
 		NUM_INPUTS
 	};
-	enum OutputIds {
+	enum Outputs {
 		NUM_OUTPUTS
 	};
-	enum LightIds {
+	enum Lights {
 		NUM_LIGHTS
 	};
 
-	float x[NUM_LINES * NUM_POINTS] = {};
-	float y[NUM_LINES * NUM_POINTS] = {};
-	int index = 0;
+	float x[NUM_LINES * NUM_POINTS] {};
+	float y[NUM_LINES * NUM_POINTS] {};
+	int index {};
 
-	NotStraightLines() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
+	NotStraightLines() {
+		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
+		configInput(X_INPUT, "X");
+		configInput(Y_INPUT, "Y");
+		configInput(TRIG_INPUT, "Trigger");
+	}
 
 	void onReset() override {
 		memset(x, 0, sizeof(x));
@@ -36,13 +41,13 @@ struct NotStraightLines : Module {
 		index = 0;
 	}
 
-	void step() override {
+	void process(const ProcessArgs& args) override {
 		if (index < NUM_LINES * NUM_POINTS) {
-			x[index] = inputs[X_INPUT].value / 5.f;
-			y[index] = inputs[Y_INPUT].value / 5.f;
+			x[index] = inputs[X_INPUT].getVoltage() / 5.f;
+			y[index] = inputs[Y_INPUT].getVoltage() / 5.f;
 			index++;
 		}
-		else  if (!inputs[TRIG_INPUT].active || inputs[TRIG_INPUT].value >= 2.f) {
+		else if (!inputs[TRIG_INPUT].isConnected() || inputs[TRIG_INPUT].getVoltage() >= 2.f) {
 			index = 0;
 		}
 	}
@@ -52,12 +57,10 @@ struct NotStraightLines : Module {
 struct ScopeWidget : TransparentWidget {
 	NotStraightLines *module;
 
-	ScopeWidget() {
-		box.size = mm2px(Vec(75, 75));
-	}
+	void drawLayer(const DrawArgs& args, int layer) override {
+		if (layer != 1) return;
 
-	void draw(NVGcontext *vg) override {
-		nvgBeginPath(vg);
+		nvgBeginPath(args.vg);
 		for (int j = 0; j < NUM_LINES; j++) {
 			for (int i = 0; i < NUM_POINTS; i++) {
 				Vec p = Vec(i, j + 0.5f).div(Vec(NUM_POINTS - 1, NUM_LINES));
@@ -65,40 +68,41 @@ struct ScopeWidget : TransparentWidget {
 				p = p.plus(Vec(module->x[index], module->y[index]).div(Vec(NUM_LINES, NUM_LINES)));
 				p = p.mult(box.size);
 				if (i == 0)
-					nvgMoveTo(vg, p.x, p.y);
+					nvgMoveTo(args.vg, p.x, p.y);
 				else
-					nvgLineTo(vg, p.x, p.y);
+					nvgLineTo(args.vg, p.x, p.y);
 			}
 		}
-		nvgLineCap(vg, NVG_ROUND);
-		nvgStrokeWidth(vg, 0.5);
-		nvgStrokeColor(vg, nvgRGBA(80, 80, 80, 0xff));
-		nvgStroke(vg);
+		nvgLineCap(args.vg, NVG_ROUND);
+		nvgStrokeWidth(args.vg, 0.5);
+		// nvgStrokeColor(args.vg, nvgRGBA(80, 80, 80, 0xff));
+		nvgStrokeColor(args.vg, SCHEME_BLACK);
+		nvgStroke(args.vg);
 
-		Widget::draw(vg);
+		Widget::drawLayer(args, layer);
 	}
 };
 
-
 struct NotStraightLinesWidget : ModuleWidget {
-	NotStraightLinesWidget(NotStraightLines *module) : ModuleWidget(module) {
-		setPanel(SVG::load(assetPlugin(plugin, "NotStraightLines.svg")));
+	NotStraightLinesWidget(NotStraightLines* module) {
+		setModule(module);
+		setPanel(createPanel(asset::plugin(pluginInstance, "res/NotStraightLines.svg")));
 
-		addInput(Port::create<PJ301MPort>(mm2px(Vec(2.0, 118.28827)), Port::INPUT, module, NotStraightLines::X_INPUT));
-		addInput(Port::create<PJ301MPort>(mm2px(Vec(21.3344, 118.28827)), Port::INPUT, module, NotStraightLines::Y_INPUT));
-		addInput(Port::create<PJ301MPort>(mm2px(Vec(40.6688, 118.28827)), Port::INPUT, module, NotStraightLines::TRIG_INPUT));
+		float x = 7.f, y = 123.f;
+		addInput(createInputCentered<ThemedPJ301MPort>(mm2px(Vec(x, y)), module, NotStraightLines::X_INPUT));
+		addInput(createInputCentered<ThemedPJ301MPort>(mm2px(Vec(x + 19.5f, y)), module, NotStraightLines::Y_INPUT));
+		addInput(createInputCentered<ThemedPJ301MPort>(mm2px(Vec(x + 39.f, y)), module, NotStraightLines::TRIG_INPUT));
 
-		ScopeWidget *scopeWidget = Widget::create<ScopeWidget>(mm2px(Vec(26.0, 26.75)));
-		scopeWidget->module = module;
-		addChild(scopeWidget);
+		ScopeWidget* scope = createWidget<ScopeWidget>(mm2px(Vec(13.5f, 10.5f)));
+		scope->box.size = mm2px(Vec(100.f, 100.f));
+		scope->module = module;
+		addChild(scope);
 	}
 };
 
 
 void init(Plugin *p) {
-	plugin = p;
-	p->slug = TOSTRING(SLUG);
-	p->version = TOSTRING(VERSION);
-
-	p->addModel(Model::create<NotStraightLines, NotStraightLinesWidget>("Andrew Belt", "NotStraightLines", "Not Straight Lines", VISUAL_TAG));
+	pluginInstance = p;
+	p->addModel(createModel<NotStraightLines, NotStraightLinesWidget>("NotStraightLines"));
 }
+

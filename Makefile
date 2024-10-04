@@ -1,9 +1,7 @@
 RACK_DIR ?= ../..
-SLUG = NotStraightLines
-VERSION = 0.6.0
 
-SOURCES += $(wildcard *.cpp)
+SOURCES += NotStraightLines.cpp
 
-DISTRIBUTABLES += $(wildcard LICENSE*) $(wildcard *.svg)
+DISTRIBUTABLES += $(wildcard LICENSE*) res
 
 include $(RACK_DIR)/plugin.mk

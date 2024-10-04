@@ -1,0 +1,17 @@
+{
+    "slug": "NotStraightLines",
+    "name": "Not Straight Lines",
+    "version": "2.0.0",
+    "license": "CC0",
+    "brand": "Andrew Belt",
+    "author": "Andrew Belt, Steve Russell",
+    "sourceUrl": "https://github.com/SteveRussell33/NotStraightLines",
+    "modules": [
+      {
+        "slug": "NotStraightLines",
+        "name": "Not Straight Lines",
+        "description": "Signal visualizer based on the work of Sol LeWitt",
+        "tags": [ "Visual" ]
+      }
+    ]
+  }
