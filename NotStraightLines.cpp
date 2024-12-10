@@ -9,6 +9,7 @@ static const int NUM_POINTS = 128;
 
 struct NotStraightLines : Module {
 	enum Params {
+		STROKE,
 		NUM_PARAMS
 	};
 	enum Inputs {
@@ -33,6 +34,7 @@ struct NotStraightLines : Module {
 		configInput(X_INPUT, "X");
 		configInput(Y_INPUT, "Y");
 		configInput(TRIG_INPUT, "Trigger");
+        configParam(STROKE, 80, 255, 90, "Stroke")->snapEnabled = true;
 	}
 
 	void onReset() override {
@@ -56,6 +58,7 @@ struct NotStraightLines : Module {
 
 struct ScopeWidget : TransparentWidget {
 	NotStraightLines *module;
+	unsigned char r, g, b; 
 
 	void drawLayer(const DrawArgs& args, int layer) override {
 		if (layer != 1) return;
@@ -75,8 +78,8 @@ struct ScopeWidget : TransparentWidget {
 		}
 		nvgLineCap(args.vg, NVG_ROUND);
 		nvgStrokeWidth(args.vg, 0.5);
-		// nvgStrokeColor(args.vg, nvgRGBA(80, 80, 80, 0xff));
-		nvgStrokeColor(args.vg, SCHEME_BLACK);
+		r = g = b = module->params[NotStraightLines::STROKE].getValue();
+		nvgStrokeColor(args.vg, nvgRGBA(r, g, b, 0xff));
 		nvgStroke(args.vg);
 
 		Widget::drawLayer(args, layer);
@@ -84,7 +87,7 @@ struct ScopeWidget : TransparentWidget {
 };
 
 struct NotStraightLinesWidget : ModuleWidget {
-	NotStraightLinesWidget(NotStraightLines* module) {
+	explicit NotStraightLinesWidget(NotStraightLines* module) {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/NotStraightLines.svg")));
 
@@ -92,6 +95,7 @@ struct NotStraightLinesWidget : ModuleWidget {
 		addInput(createInputCentered<ThemedPJ301MPort>(mm2px(Vec(x, y)), module, NotStraightLines::X_INPUT));
 		addInput(createInputCentered<ThemedPJ301MPort>(mm2px(Vec(x + 19.5f, y)), module, NotStraightLines::Y_INPUT));
 		addInput(createInputCentered<ThemedPJ301MPort>(mm2px(Vec(x + 39.f, y)), module, NotStraightLines::TRIG_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(x + 60.f, y)), module, NotStraightLines::STROKE));
 
 		ScopeWidget* scope = createWidget<ScopeWidget>(mm2px(Vec(13.5f, 10.5f)));
 		scope->box.size = mm2px(Vec(100.f, 100.f));
