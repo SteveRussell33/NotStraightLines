@@ -4,8 +4,8 @@ using namespace rack;
 
 Plugin* pluginInstance;
 
-static const int NUM_LINES = 60;
-static const int NUM_POINTS = 128;
+static constexpr const int NUM_LINES = 60;
+static constexpr const int NUM_POINTS = 128;
 
 struct NotStraightLines : Module {
 	enum Params {
